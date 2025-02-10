@@ -1,31 +1,45 @@
-import logging
-from aiogram import Bot, Dispatcher, types
-from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
-from aiogram.utils import executor
-import calendar
+import os
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import Updater, CommandHandler, CallbackQueryHandler, CallbackContext
+from telegram_bot_calendar import DetailedTelegramCalendar
 
-API_TOKEN = '8074120036:AAEhkClYTLdGtTdj5xCN9Qufv9WpLb0nCiY'  # замените на реальный токен из BotFather
+# Функция для старта
+def start(update: Update, context: CallbackContext) -> None:
+    keyboard = [
+        [InlineKeyboardButton("Календарь", callback_data='calendar')]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    update.message.reply_text('Привет! Нажми на кнопку ниже, чтобы открыть календарь.', reply_markup=reply_markup)
 
-logging.basicConfig(level=logging.INFO)
+# Функция для отображения календаря
+def calendar(update: Update, context: CallbackContext) -> None:
+    calendar = DetailedTelegramCalendar(calendar_id=1)
+    text = calendar.build()
+    update.message.reply_text(text)
 
-bot = Bot(token=API_TOKEN)
-dp = Dispatcher(bot)
+# Основная функция для обработки событий
+def main() -> None:
+    # Получаем токен из переменной окружения
+    token = os.getenv("BOT_TOKEN")
 
-# Обработчик команды /start
-@dp.message_handler(commands=['start'])
-async def send_welcome(message: types.Message):
-    markup = InlineKeyboardMarkup()
-    calendar_button = InlineKeyboardButton("Календарь", callback_data="calendar")
-    markup.add(calendar_button)
-    await message.answer("Привет! Нажми на кнопку для получения календаря.", reply_markup=markup)
+    if not token:
+        print("BOT_TOKEN не найден в переменных окружения!")
+        return
 
-# Обработчик нажатия на кнопку "Календарь"
-@dp.callback_query_handler(lambda c: c.data == 'calendar')
-async def show_calendar(callback_query: types.CallbackQuery):
-    year = 2025
-    month = 2
-    cal = calendar.month(year, month)
-    await bot.send_message(callback_query.from_user.id, f"Вот календарь на {calendar.month_name[month]} {year}:\n\n{cal}")
+    updater = Updater(token)
+
+    # Получаем диспетчер для обработки команд
+    dispatcher = updater.dispatcher
+
+    # Добавляем обработчики команд
+    dispatcher.add_handler(CommandHandler("start", start))
+    dispatcher.add_handler(CallbackQueryHandler(calendar, pattern='calendar'))
+
+    # Запуск бота
+    updater.start_polling()
+
+    # Ожидаем завершения работы
+    updater.idle()
 
 if __name__ == '__main__':
-    executor.start_polling(dp, skip_updates=True)
+    main()
