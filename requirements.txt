@@ -1,2 +1,2 @@
-aiogram==2.25.1
-calendar
+python-telegram-bot==20.0
+python-telegram-bot-calendar==0.1.2
